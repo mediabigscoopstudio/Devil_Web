@@ -1,0 +1,18 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+venv/
+.env
+
+# Media / Static collected
+media/
+static/images/
+!static/images/logo.png
+!static/images/favicon.jpg
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,64 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-people-fill me-2 text-danger"></i>User Management</h3>
+        <p class="text-muted small mb-0">Search, monitor, suspend, or ban platform accounts</p>
+    </div>
+
+    <form method="GET" class="d-flex gap-2" style="max-width: 320px;">
+        <input type="text" name="q" value="{{ query }}" class="form-control form-control-sm rounded-pill px-3" placeholder="Search phone number...">
+        <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3">Search</button>
+    </form>
+</div>
+
+<div class="card-custom">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+            <thead class="table-light">
+                <tr>
+                    <th>User ID</th>
+                    <th>Phone / Email</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td class="font-monospace small text-muted">{{ u.id }}</td>
+                    <td>
+                        <div class="fw-bold">{{ u.profile.display_name|default:u.phone_number }}</div>
+                        <div class="small text-muted">{{ u.email|default:u.phone_number }}</div>
+                    </td>
+                    <td>
+                        {% if u.status == 'ACTIVE' %}
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">Active</span>
+                        {% elif u.status == 'SUSPENDED' %}
+                        <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">Suspended</span>
+                        {% else %}
+                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Banned</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ u.created_at|date:"M d, Y" }}</td>
+                    <td class="text-end">
+                        {% if u.status == 'ACTIVE' %}
+                        <a href="{% url 'dashboard-user-action' u.id 'suspend' %}" class="btn btn-sm btn-outline-warning rounded-pill px-3 me-1">Suspend</a>
+                        <a href="{% url 'dashboard-user-action' u.id 'ban' %}" class="btn btn-sm btn-outline-danger rounded-pill px-3">Ban</a>
+                        {% else %}
+                        <a href="{% url 'dashboard-user-action' u.id 'unban' %}" class="btn btn-sm btn-success rounded-pill px-3">Unban</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">No users found matching query</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
