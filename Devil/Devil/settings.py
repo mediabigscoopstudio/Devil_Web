@@ -90,7 +90,7 @@ WSGI_APPLICATION = 'Devil.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'Devil_db',
+        'NAME': 'devil_db',
         'USER': 'devil_user',
         'PASSWORD': 'Mina@2001',
         'HOST': '127.0.0.1',
