@@ -93,7 +93,7 @@ DATABASES = {
         'NAME': 'Devil_db',
         'USER': 'Minaketan',
         'PASSWORD': 'Mina@2001',
-        'HOST': '127.0.0.1',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
