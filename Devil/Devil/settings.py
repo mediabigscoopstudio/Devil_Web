@@ -91,9 +91,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'Devil_db',
-        'USER': 'Minaketan',
+        'USER': 'devil_user',
         'PASSWORD': 'Mina@2001',
-        'HOST': 'localhost',
+        'HOST': '127.0.0.1',
         'PORT': '5432',
     }
 }
