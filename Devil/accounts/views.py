@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from .models import User, SocialIdentity
+from profiles.models import Profile
 from .serializers import (
     UserSerializer, AuthResponseSerializer, OTPRequestSerializer, 
     OTPVerifySerializer, GoogleAuthSerializer
@@ -22,9 +23,8 @@ class AuthHelper:
 
     @staticmethod
     def get_auth_response(user, is_new_user):
-        requires_onboarding = True
-        if hasattr(user, 'profile') and hasattr(user.profile, 'profile_completed'):
-            requires_onboarding = not user.profile.profile_completed
+        profile, _ = Profile.objects.get_or_create(user=user)
+        requires_onboarding = not profile.profile_completed
 
         return {
             'success': True,
@@ -168,11 +168,9 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
         
-        requires_onboarding = True
-        profile_completed = False
-        if hasattr(user, 'profile') and hasattr(user.profile, 'profile_completed'):
-            profile_completed = user.profile.profile_completed
-            requires_onboarding = not profile_completed
+        profile, _ = Profile.objects.get_or_create(user=user)
+        profile_completed = profile.profile_completed
+        requires_onboarding = not profile_completed
             
         return Response({
             'success': True,
