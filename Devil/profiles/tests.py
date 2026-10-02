@@ -188,6 +188,22 @@ class ProfileOnboardingTests(TestCase):
         self.assertEqual(p1.sort_order, 1)
         self.assertEqual(p2.sort_order, 2)
         
+    def test_invalid_photo_sort_order(self):
+        p1 = ProfilePhoto.objects.create(profile=self.profile, image=generate_test_image(), is_primary=True, sort_order=0)
+        p2 = ProfilePhoto.objects.create(profile=self.profile, image=generate_test_image(), is_primary=False, sort_order=1)
+        
+        url = reverse('photo-detail', args=[p2.id])
+        
+        # Test negative
+        response = self.client.patch(url, {'sort_order': -1})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error']['code'], 'INVALID_SORT_ORDER')
+        
+        # Test out of range (>= photo_count)
+        response = self.client.patch(url, {'sort_order': 2})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error']['code'], 'INVALID_SORT_ORDER')
+        
     def test_delete_primary_reassigns(self):
         p1 = ProfilePhoto.objects.create(profile=self.profile, image=generate_test_image(), is_primary=True, sort_order=0)
         p2 = ProfilePhoto.objects.create(profile=self.profile, image=generate_test_image(), is_primary=False, sort_order=1)

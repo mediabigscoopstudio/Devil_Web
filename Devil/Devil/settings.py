@@ -20,16 +20,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 import os
+from django.core.exceptions import ImproperlyConfigured
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8*$!8ry2r6qykts4dorr7)i5(ip^78w53w*3rb11kkqavv8*wj')
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured("The DJANGO_SECRET_KEY environment variable is missing.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '*')
-ALLOWED_HOSTS = allowed_hosts_env.split(',') if allowed_hosts_env else ['*']
+allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = allowed_hosts_env.split(',') if allowed_hosts_env else []
 
 
 # Application definition

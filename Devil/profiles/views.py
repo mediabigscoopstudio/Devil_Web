@@ -219,6 +219,17 @@ class PhotoDetailView(APIView):
             if 'sort_order' in request.data:
                 new_order = int(request.data['sort_order'])
                 old_order = photo.sort_order
+                photo_count = profile.photos.count()
+                
+                if new_order < 0 or new_order >= photo_count:
+                    return Response({
+                        "success": False,
+                        "error": {
+                            "code": "INVALID_SORT_ORDER",
+                            "message": f"Sort order must be between 0 and {photo_count - 1}."
+                        }
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
                 if new_order != old_order:
                     # Deterministic shift
                     if new_order < old_order:

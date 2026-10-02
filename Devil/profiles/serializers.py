@@ -42,8 +42,10 @@ class ProfilePhotoSerializer(serializers.ModelSerializer):
             value.seek(0)
             img = Image.open(io.BytesIO(value.read()))
             img.verify()
-        except Exception:
+        except UnidentifiedImageError:
             raise ValidationError({"code": "INVALID_IMAGE", "message": "The uploaded file is not a valid image."})
+        except (IOError, SyntaxError):
+            raise ValidationError({"code": "INVALID_IMAGE", "message": "The uploaded image file is corrupted."})
             
         value.seek(0)
         img = Image.open(io.BytesIO(value.read()))
