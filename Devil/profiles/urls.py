@@ -1,11 +1,14 @@
 from django.urls import path
-from .views import ProfileView, PhotoListCreateView, PhotoDetailView, InterestListView, UserInterestView, PreferenceView
+from .views import (
+    ProfileMeView, ProfileLocationView, ProfileNotificationPreferenceView,
+    ProfileCompleteView, PhotoListCreateView, PhotoDetailView
+)
 
 urlpatterns = [
-    path('', ProfileView.as_view(), name='profile'),
+    path('me/', ProfileMeView.as_view(), name='profile-me'),
+    path('location/', ProfileLocationView.as_view(), name='profile-location'),
+    path('notification-preference/', ProfileNotificationPreferenceView.as_view(), name='profile-notifications'),
+    path('complete/', ProfileCompleteView.as_view(), name='profile-complete'),
     path('photos/', PhotoListCreateView.as_view(), name='photo-list-create'),
     path('photos/<uuid:pk>/', PhotoDetailView.as_view(), name='photo-detail'),
-    path('interests/all/', InterestListView.as_view(), name='interest-list'),
-    path('interests/', UserInterestView.as_view(), name='user-interests'),
-    path('preferences/', PreferenceView.as_view(), name='preferences'),
 ]
