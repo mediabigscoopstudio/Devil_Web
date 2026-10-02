@@ -98,7 +98,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         child=serializers.CharField(), required=False, write_only=True
     )
     interests = serializers.ListField(
-        child=serializers.IntegerField(), required=False, write_only=True
+        child=serializers.UUIDField(), required=False, write_only=True
     )
     
     class Meta:

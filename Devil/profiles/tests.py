@@ -64,7 +64,8 @@ class ProfileOnboardingTests(TestCase):
 
     def test_invalid_interests(self):
         url = reverse('profile-me')
-        response = self.client.patch(url, {'interests': [self.interest.id, 99999]})
+        import uuid
+        response = self.client.patch(url, {'interests': [self.interest.id, uuid.uuid4()]})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['error']['code'], 'INVALID_INTERESTS')
 

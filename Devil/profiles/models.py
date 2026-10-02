@@ -13,6 +13,7 @@ class DatingIntent(models.Model):
         return self.label
 
 class Interest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=80, unique=True)
     slug = models.SlugField(max_length=100, unique=True, null=True, blank=True)
     is_active = models.BooleanField(default=True)
