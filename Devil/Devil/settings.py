@@ -21,12 +21,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8*$!8ry2r6qykts4dorr7)i5(ip^78w53w*3rb11kkqavv8*wj'
+import os
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-8*$!8ry2r6qykts4dorr7)i5(ip^78w53w*3rb11kkqavv8*wj')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*', 'testserver', 'localhost', '127.0.0.1', 'devil.bigscooptesting2.online']
+allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS', '*')
+ALLOWED_HOSTS = allowed_hosts_env.split(',') if allowed_hosts_env else ['*']
 
 
 # Application definition
@@ -92,11 +95,11 @@ WSGI_APPLICATION = 'Devil.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'devil_db',
-        'USER': 'devil_user',
-        'PASSWORD': 'Mina@2001',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'devil_db'),
+        'USER': os.environ.get('DB_USER', 'devil_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 

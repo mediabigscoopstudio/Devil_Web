@@ -3,10 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import F
 from .models import Profile, ProfilePhoto, Interest, DatingIntent
 from .serializers import (
     ProfileSerializer, ProfileUpdateSerializer, LocationUpdateSerializer,
-    NotificationPreferenceSerializer, ProfilePhotoSerializer
+    NotificationPreferenceSerializer, ProfilePhotoSerializer, InterestSerializer, DatingIntentSerializer
 )
 
 class ProfileMeView(APIView):
@@ -25,20 +26,7 @@ class ProfileMeView(APIView):
         serializer = ProfileUpdateSerializer(profile, data=request.data, partial=True)
         
         if serializer.is_valid():
-            dob = serializer.validated_data.get('date_of_birth', profile.date_of_birth)
-            if dob:
-                today = timezone.localdate()
-                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-                if age < 18:
-                    return Response({
-                        "success": False,
-                        "error": {
-                            "code": "AGE_RESTRICTED",
-                            "message": "You must be 18 or older to use Devil."
-                        }
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Handle M2M relationships manually since they are write-only fields
+            # Handle M2M relationships safely
             looking_for_codes = serializer.validated_data.pop('looking_for', None)
             interest_ids = serializer.validated_data.pop('interests', None)
             
@@ -53,12 +41,19 @@ class ProfileMeView(APIView):
                     interests = Interest.objects.filter(id__in=interest_ids)
                     profile.interests.set(interests)
             
-            # Re-fetch profile to serialize it
             return Response({
                 'success': True,
                 'profile': ProfileSerializer(profile).data
             })
             
+        # Format errors safely
+        error_dict = list(serializer.errors.values())[0][0] if serializer.errors else {}
+        if isinstance(error_dict, dict) and 'code' in error_dict:
+            return Response({
+                'success': False,
+                'error': error_dict
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         return Response({
             'success': False,
             'error': {
@@ -67,6 +62,26 @@ class ProfileMeView(APIView):
                 'details': serializer.errors
             }
         }, status=status.HTTP_400_BAD_REQUEST)
+
+class InterestListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        interests = Interest.objects.filter(is_active=True).order_by('sort_order', 'name')
+        return Response({
+            'success': True,
+            'interests': InterestSerializer(interests, many=True).data
+        })
+
+class DatingIntentListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        intents = DatingIntent.objects.filter(is_active=True).order_by('sort_order')
+        return Response({
+            'success': True,
+            'dating_intents': DatingIntentSerializer(intents, many=True).data
+        })
 
 class ProfileLocationView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -77,6 +92,11 @@ class ProfileLocationView(APIView):
         if serializer.is_valid():
             serializer.save(location_updated_at=timezone.now())
             return Response({'success': True, 'profile': ProfileSerializer(profile).data})
+            
+        error_dict = list(serializer.errors.values())[0][0] if serializer.errors else {}
+        if isinstance(error_dict, dict) and 'code' in error_dict:
+            return Response({'success': False, 'error': error_dict}, status=status.HTTP_400_BAD_REQUEST)
+            
         return Response({'success': False, 'error': {'code': 'VALIDATION_ERROR', 'details': serializer.errors}}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProfileNotificationPreferenceView(APIView):
@@ -96,6 +116,13 @@ class ProfileCompleteView(APIView):
     def post(self, request):
         profile, _ = Profile.objects.get_or_create(user=request.user)
         
+        if profile.profile_completed:
+            return Response({
+                "success": True,
+                "profile_completed": True,
+                "requires_onboarding": False
+            })
+            
         errors = {}
         if not profile.display_name:
             errors['display_name'] = "Display name is required."
@@ -153,23 +180,25 @@ class PhotoListCreateView(APIView):
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
             
-        if 'image' not in request.FILES:
-            return Response({'success': False, 'error': {'code': 'INVALID_REQUEST', 'message': 'No image provided.'}}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = ProfilePhotoSerializer(data=request.data)
+        if serializer.is_valid():
+            is_primary = profile.photos.count() == 0
+            sort_order = profile.photos.count()
             
-        is_primary = profile.photos.count() == 0
-        sort_order = profile.photos.count()
-        
-        photo = ProfilePhoto.objects.create(
-            profile=profile,
-            image=request.FILES['image'],
-            is_primary=is_primary,
-            sort_order=sort_order
-        )
-        
-        return Response({
-            'success': True,
-            'photo': ProfilePhotoSerializer(photo).data
-        })
+            with transaction.atomic():
+                photo = serializer.save(
+                    profile=profile,
+                    is_primary=is_primary,
+                    sort_order=sort_order
+                )
+            return Response({'success': True, 'photo': ProfilePhotoSerializer(photo).data})
+            
+        error_dict = list(serializer.errors.values())[0][0] if serializer.errors else {}
+        if isinstance(error_dict, dict) and 'code' in error_dict:
+            return Response({'success': False, 'error': error_dict}, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response({'success': False, 'error': {'code': 'INVALID_REQUEST', 'message': 'Invalid image'}}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class PhotoDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -181,16 +210,32 @@ class PhotoDetailView(APIView):
         except ProfilePhoto.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
             
-        if 'is_primary' in request.data and request.data['is_primary']:
-            with transaction.atomic():
+        with transaction.atomic():
+            if 'is_primary' in request.data and request.data['is_primary'] is True:
                 profile.photos.all().update(is_primary=False)
                 photo.is_primary = True
                 photo.save(update_fields=['is_primary'])
                 
-        if 'sort_order' in request.data:
-            photo.sort_order = int(request.data['sort_order'])
-            photo.save(update_fields=['sort_order'])
+            if 'sort_order' in request.data:
+                new_order = int(request.data['sort_order'])
+                old_order = photo.sort_order
+                if new_order != old_order:
+                    # Deterministic shift
+                    if new_order < old_order:
+                        profile.photos.filter(sort_order__gte=new_order, sort_order__lt=old_order).update(sort_order=F('sort_order') + 1)
+                    else:
+                        profile.photos.filter(sort_order__gt=old_order, sort_order__lte=new_order).update(sort_order=F('sort_order') - 1)
+                    photo.sort_order = new_order
+                    photo.save(update_fields=['sort_order'])
+                    
+                    # Ensure 0 to N normalization safely
+                    all_photos = list(profile.photos.order_by('sort_order'))
+                    for i, p in enumerate(all_photos):
+                        if p.sort_order != i:
+                            p.sort_order = i
+                            p.save(update_fields=['sort_order'])
             
+        photo.refresh_from_db()
         return Response({'success': True, 'photo': ProfilePhotoSerializer(photo).data})
 
     def delete(self, request, pk):
@@ -209,12 +254,20 @@ class PhotoDetailView(APIView):
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
             
-        was_primary = photo.is_primary
-        photo.delete()
-        
-        if was_primary:
-            first = profile.photos.order_by('sort_order').first()
-            if first:
+        with transaction.atomic():
+            was_primary = photo.is_primary
+            photo.delete()
+            
+            # Reorder
+            all_photos = list(profile.photos.order_by('sort_order'))
+            for i, p in enumerate(all_photos):
+                if p.sort_order != i:
+                    p.sort_order = i
+                    p.save(update_fields=['sort_order'])
+            
+            # Reassign primary
+            if was_primary and all_photos:
+                first = all_photos[0]
                 first.is_primary = True
                 first.save(update_fields=['is_primary'])
                 
